@@ -116,7 +116,12 @@ def record_version(db, origin, feed_date, values, keys, history, current):
 
 
 def publish(db, as_of):
-    # Each country target and staging share the requested reporting date.
+    # Capture the keys before assigning the reporting date to staging.
+    db.execute("CREATE TEMP TABLE publish_key (member_key TEXT PRIMARY KEY) WITHOUT ROWID")
+    db.execute(
+        "INSERT INTO publish_key SELECT member_key FROM stage_member WHERE as_of_date IS NOT ?",
+        (as_of,),
+    )
     db.execute(
         """
         UPDATE stage_member
@@ -124,12 +129,16 @@ def publish(db, as_of):
                   - (substr(:as_of, 6) < substr(dob, 6)),
             stale_member = (julianday(:as_of) - julianday(last_flight_date)) > 90,
             as_of_date = :as_of
-        WHERE as_of_date IS NULL OR as_of_date <> :as_of
+        WHERE member_key IN (SELECT member_key FROM publish_key)
         """,
         {"as_of": as_of},
     )
     for country, table in COUNTRIES.items():
         db.execute(f"CREATE TABLE IF NOT EXISTS {table} AS SELECT * FROM stage_member WHERE 0")
         db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS {table}_member_key ON {table} (member_key)")
-        db.execute(f"DELETE FROM {table}")
-        db.execute(f"INSERT INTO {table} SELECT * FROM stage_member WHERE country = ?", (country,))
+        db.execute(f"DELETE FROM {table} WHERE member_key IN (SELECT member_key FROM publish_key)")
+        db.execute(
+            f"INSERT INTO {table} SELECT m.* FROM publish_key AS k "
+            "JOIN stage_member AS m USING (member_key) WHERE m.country = ?",
+            (country,),
+        )

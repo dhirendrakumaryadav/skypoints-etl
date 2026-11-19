@@ -71,6 +71,24 @@ class PipelineTest(unittest.TestCase):
         self.load()
         self.assertEqual(self.query("SELECT age, stale_member FROM table_philippines"), [(34, 1)])
 
+    def test_country_publication_leaves_unchanged_members_alone(self):
+        first = self.global_feed("first.psv",
+                                 "|D|Alex|42|20190101||GLD||WA|USA||A",
+                                 "|D|Casey|43|20190101||GLD||WA|USA||A")
+        self.load(profiles=[("global", first)])
+        self.query("""
+            CREATE TRIGGER keep_untouched_member BEFORE DELETE ON table_usa
+            WHEN OLD.member_key = 'global:43'
+            BEGIN
+                SELECT RAISE(ABORT, 'unchanged member was rewritten');
+            END
+        """)
+        self.load(profiles=[("global", first)])
+        move = self.global_feed("move.psv", "|D|Alex|42|20190101||GLD||BC|CAN||A")
+        self.load(profiles=[("global", move)], feed_date="2024-01-16")
+        self.assertEqual(self.query("SELECT member_key FROM table_usa"), [("global:43",)])
+        self.assertEqual(self.query("SELECT member_key FROM table_canada"), [("global:42",)])
+
     def test_duplicate_file_and_identical_versions_are_noops_but_conflict_is_rejected(self):
         row = "|D|Alex|42|20190101||GLD||WA|USA||A"
         first = self.global_feed("first.psv", row, row)

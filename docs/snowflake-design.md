@@ -1,6 +1,6 @@
 # Running SkyPoints at production volume
 
-The [SQLite implementation](../README.md) is a reproducible reference for semantics. [Snowflake DDL](../sql/snowflake.sql) defines the warehouse tables and join. The local pipeline refreshes the country tables in a single transaction, which makes the demo easy to inspect. The warehouse should publish only changed keys and refresh time-based fields separately.
+The [SQLite implementation](../README.md) is a reproducible reference for semantics. [Snowflake DDL](../sql/snowflake.sql) defines the warehouse tables and join. The local pipeline publishes changed profiles and refreshes reporting dates in a single transaction. In the warehouse, publish changed profiles and refresh time-based fields separately so a reporting day change need not rewrite each profile.
 
 ## Land and reconcile each delivery
 
