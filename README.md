@@ -4,7 +4,7 @@ SkyPoints needs one current profile per member, one country table for that profi
 
 ## Run the demo
 
-Use Python 3.12 or later from this directory. The demo and tests use the standard library.
+Use Python 3.12 or later from this directory. The demo and tests use the standard library. GitHub Actions runs the test suite on Windows and Linux.
 
 ```sh
 python -m unittest discover -s tests -v
