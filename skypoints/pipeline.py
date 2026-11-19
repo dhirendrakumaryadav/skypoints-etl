@@ -59,8 +59,11 @@ def load_file(db, source, path, feed_date):
         file_id = result.lastrowid
         with io.TextIOWrapper(binary, encoding="utf-8-sig", newline="") as stream:
             is_redemption = source == "redemptions"
-            rows = redemption_rows(stream, path.suffix) if is_redemption else profile_rows(stream, source)
-            for number, raw in rows:
+            if is_redemption:
+                rows = ((number, raw, None) for number, raw in redemption_rows(stream, path.suffix))
+            else:
+                rows = profile_rows(stream, source)
+            for number, raw, fields in rows:
                 origin = (file_id, number)
                 payload = raw if isinstance(raw, str) else json.dumps(raw, ensure_ascii=False)
                 db.execute("INSERT INTO landing_record VALUES (?, ?, ?)", (*origin, payload))
@@ -68,7 +71,7 @@ def load_file(db, source, path, feed_date):
                     if is_redemption:
                         load_redemptions(db, origin, raw, feed_date)
                     else:
-                        values = normalize_profile(raw, source, feed_date)
+                        values = normalize_profile(raw, source, feed_date, fields)
                         record_version(db, origin, feed_date, values, PROFILE_KEYS, "profile_version", "stage_member")
                 except InvalidRecord as error:
                     reject(db, origin, 0, error)

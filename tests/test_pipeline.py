@@ -51,6 +51,15 @@ class PipelineTest(unittest.TestCase):
                          [("aus:001", "2021-12-13", None)])
         self.assertEqual(self.query("SELECT reason FROM rejected_record"), [("enrollment_date has an invalid date",)])
 
+    def test_alternate_global_header_carries_an_optional_post_code(self):
+        header = HEADER.replace("|Country|DOB|", "|Country|Post_Code|DOB|")
+        source = self.write("postal.psv", header
+                            + "|D|Alex|42|20190101||GLD||MA|USA|02108|01161990|A\n"
+                            + "|D|Casey|43|20190101||GLD||MA|USA||01161990|A\n"
+                            + "|D|Taylor|44|20190101||GLD||MA|USA|12A45|01161990|A\n")
+        self.assertEqual(self.load(profiles=[("global", source)])["rejections"], 1)
+        self.assertEqual(self.query("SELECT post_code FROM table_usa ORDER BY member_key"), [("02108",), (None,)])
+
     def test_newer_profile_moves_country_and_older_delivery_cannot_move_it_back(self):
         new = self.global_feed("new.psv", "|D|Alex|42|20190101||GLD||VIC|AU|01161990|A")
         old = self.global_feed("old.psv", "|D|Alex|42|20190101|20231017|GLD||WA|USA|01161990|A")

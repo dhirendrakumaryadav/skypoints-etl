@@ -18,6 +18,11 @@ GLOBAL_FIELDS = (
     "member_name", "member_id", "enrollment_date", "last_flight_date", "tier_code",
     "agent_name", "state", "country", "dob", "active_flag",
 )
+GLOBAL_LAYOUTS = {
+    GLOBAL_COLUMNS: GLOBAL_FIELDS,
+    (*GLOBAL_COLUMNS[:8], "Post_Code", *GLOBAL_COLUMNS[8:]):
+        (*GLOBAL_FIELDS[:8], "post_code", *GLOBAL_FIELDS[8:]),
+}
 CSV_LAYOUTS = {
     "usa": (
         ("ID", "Name", "TierCode", "EnrollmentDate", "FlightDate"),
@@ -44,21 +49,23 @@ def profile_rows(stream, source):
     if source == "global":
         lines = enumerate(stream, 1)
         _, header = next(lines, (0, ""))
-        if tuple(header.rstrip("\r\n").split("|")) != ("", "H", *GLOBAL_COLUMNS):
+        parts = header.rstrip("\r\n").split("|")
+        fields = GLOBAL_LAYOUTS.get(tuple(parts[2:]))
+        if parts[:2] != ["", "H"] or fields is None:
             raise ValueError("unexpected global profile header")
         for line_number, line in lines:
             line = line.rstrip("\r\n")
             if line:
-                yield line_number, line
+                yield line_number, line, fields
         return
 
-    columns, _ = CSV_LAYOUTS[source]
+    columns, fields = CSV_LAYOUTS[source]
     reader = csv.reader(stream, strict=True)
     if tuple(next(reader, [])) != columns:
         raise ValueError(f"unexpected {source} profile header")
     for row in reader:
         if row:
-            yield reader.line_num, row
+            yield reader.line_num, row, fields
 
 
 def clean_text(value, field, limit, required=False):
@@ -110,15 +117,13 @@ def member_key(source, member_id):
     return f"{source}:{member_id}"
 
 
-def normalize_profile(raw, source, feed_date):
+def normalize_profile(raw, source, feed_date, fields):
     if source == "global":
         parts = raw.split("|")
-        fields = GLOBAL_FIELDS
         if parts[:2] != ["", "D"]:
             raise InvalidRecord("expected a global detail record")
         values = parts[2:]
     else:
-        _, fields = CSV_LAYOUTS[source]
         values = raw
     if len(values) != len(fields):
         raise InvalidRecord("wrong number of profile fields")
@@ -130,8 +135,10 @@ def normalize_profile(raw, source, feed_date):
         "enrollment_date": parse_date(data.get("enrollment_date"), "enrollment_date", date_format, required=True),
         "last_flight_date": parse_date(data.get("last_flight_date"), "last_flight_date", date_format),
         "dob": parse_date(data.get("dob"), "dob", "%m%d%Y" if source == "global" else date_format),
-        "post_code": None,
+        "post_code": clean_text(data.get("post_code"), "post_code", 5),
     }
+    if profile["post_code"] and not re.fullmatch(r"[0-9]{5}", profile["post_code"]):
+        raise InvalidRecord("post_code must contain five digits")
     country = (data.get("country") or (source if source != "global" else "")).upper()
     profile["country"] = COUNTRY_ALIASES.get(country, country)
     if profile["country"] not in COUNTRIES:
