@@ -39,7 +39,7 @@ class CommandLineTest(unittest.TestCase):
         arguments = ("--feed-date", "2024-01-15", "--profile", "global", "demo/members-2024-01-15.psv")
         failed = self.invoke(*arguments, "--profile", "usa", str(bad_feed))
         self.assertEqual(failed.returncode, 1)
-        self.assertIn("unexpected usa profile header", failed.stderr)
+        self.assertIn("usa input unexpected.csv: unexpected usa profile header", failed.stderr)
         self.assertEqual(failed.stdout, "")
         empty = self.invoke("--feed-date", "2024-01-15")
         self.assertEqual(empty.returncode, 0, empty.stderr)

@@ -1,10 +1,12 @@
 """Load, validate, and publish one batch in a SQLite transaction."""
 
+import csv
 import hashlib
 import io
 import json
 import sqlite3
 from contextlib import closing
+from itertools import chain
 from pathlib import Path
 
 from .feeds import (
@@ -22,10 +24,13 @@ def run(database, feed_date, as_of, profiles, redemptions):
         db.executescript(SCHEMA.read_text(encoding="utf-8"))
         with db:
             db.execute("BEGIN IMMEDIATE")
-            for source, path in profiles:
-                load_file(db, source, Path(path), feed_date)
-            for path in redemptions:
-                load_file(db, "redemptions", Path(path), feed_date)
+            partner_inputs = (("redemptions", path) for path in redemptions)
+            for source, path in chain(profiles, partner_inputs):
+                path = Path(path)
+                try:
+                    load_file(db, source, path, feed_date)
+                except (OSError, ValueError, csv.Error) as error:
+                    raise ValueError(f"{source} input {path.name}: {error}") from error
             latest_feed = db.execute("SELECT max(feed_date) FROM landing_file").fetchone()[0]
             if latest_feed and as_of < latest_feed:
                 raise ValueError(f"reporting date precedes a loaded feed ({latest_feed}); set --as-of")

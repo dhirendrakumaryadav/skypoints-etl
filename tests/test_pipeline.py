@@ -1,4 +1,3 @@
-import csv
 import json
 import sqlite3
 import tempfile
@@ -158,7 +157,7 @@ class PipelineTest(unittest.TestCase):
         original = self.load(profiles=[("global", existing)])
         pending = self.global_feed("pending.psv", "|D|Casey|43|20190101||GLD||WA|USA||A")
         broken = self.write("broken.csv", 'ID,Name,TierCode,EnrollmentDate,FlightDate\n1,"open\n')
-        with self.assertRaises(csv.Error):
+        with self.assertRaisesRegex(ValueError, "usa input broken.csv"):
             self.load(profiles=[("global", pending), ("usa", broken)])
         self.assertEqual(self.load(), original)
         self.assertEqual(self.load(profiles=[("global", pending)])["members"], 2)

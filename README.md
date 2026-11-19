@@ -35,7 +35,7 @@ Rerun the second load to show that an identical file does not create a new versi
 
 ### Recover a failed delivery
 
-- A file-level failure exits with code `1` and rolls back the delivery. Fix the input or source selection and retry the same date. Earlier committed deliveries stay available.
+- A file-level failure names the input, exits with code `1`, and rolls back the delivery. Fix the input or source selection and retry the same date. Earlier committed deliveries stay available.
 - A delivery can succeed with rejected records. Inspect `rejection_report` for the source file and row before correcting them. A corrected row can be loaded on the same date if it had no accepted version. A correction to an already accepted key needs a newer delivery date under the current versioning rule.
 - If a backfill reports that its reporting date precedes a loaded feed, pass an `--as-of` date at least as recent as the latest loaded delivery. Use a fresh database to reproduce a historical snapshot from the original files.
 
