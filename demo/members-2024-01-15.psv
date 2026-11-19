@@ -1,0 +1,5 @@
+|H|Member_Name|Member_Id|Enrollment_Date|Last_Flight_Date|Tier_Code|Agent_Name|State|Country|DOB|Is_Active
+|D|Alex Morgan|90001|20170115|20240110|GLD||WA|USA|01151990|A
+|D|Casey Rao|90002|20180601|20231016|SLV||KA|IND|06011995|A
+|D|Taylor Reed|90003|20190312||PLT||VIC|AU||A
+|D|Jordan Lim|90004|20190501|20231017|GLD||NCR|PHIL|12011988|A

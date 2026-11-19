@@ -1,0 +1,2 @@
+{"member_id":"90001","feed_date":"20240115","redemptions":[{"txn_id":"DEMO-1","txn_date":"20240110","partner":"Demo Air","miles_redeemed":12000,"status":"COMPLETED"},{"txn_id":"DEMO-2","txn_date":"20240113","partner":"Demo Air","miles_redeemed":5000,"status":"PENDING"},{"txn_id":"DEMO-3","txn_date":"20240113","partner":"Demo Air","miles_redeemed":-50,"status":"PENDING"}]}
+{"member_id":"90099","feed_date":"20240115","redemptions":[{"txn_id":"DEMO-4","txn_date":"20240112","partner":"Demo Air","miles_redeemed":3000,"status":"COMPLETED"}]}
