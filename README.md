@@ -12,7 +12,14 @@ python -m skypoints --db demo.db --feed-date 2024-01-15 --profile global demo/me
 python -m skypoints --db demo.db --feed-date 2024-01-16 --profile global demo/members-2024-01-16.psv
 ```
 
-Start with a fresh database name for the walkthrough. The first load publishes four members, three redemptions, and one rejected redemption item. The second moves `global:90001` from the USA to Canada. The profile stays unique, and its two redemptions now show Canada in the current-profile join. The third redemption stays visible with a null country until its profile arrives.
+Start with a fresh database name for the walkthrough. Both loads leave four members, three accepted redemptions, and one rejected redemption item. These are the rows to follow during the demo.
+
+| What to inspect | After January 15 | After January 16 |
+| --- | --- | --- |
+| `global:90001` in the country tables | One row in `table_usa` | One row in `table_canada` |
+| `DEMO-1` and `DEMO-2` in the redemption join | `USA` | `CAN` |
+| `DEMO-4` in the redemption join | Null country | Still visible with a null country |
+| Rejected item | Line 1, item 3 has negative miles | Same rejection, preserved for review |
 
 ```sh
 python -m sqlite3 demo.db "SELECT country, member_key FROM stage_member ORDER BY member_key;"
@@ -25,6 +32,12 @@ python -m sqlite3 demo.db "SELECT * FROM country_publication_issue;"
 The last query should return zero rows. It compares country tables to staging and detects missing, misrouted, duplicated, and outdated publications even if the overall member count looks correct.
 
 Rerun the second load to show that an identical file does not create a new version. To demonstrate an older delivery arriving late, start with a fresh database, run the second load first, then run the first load with `--as-of 2024-01-16`. The member should stay in Canada. To test a new reporting date without new files, run `python -m skypoints --db demo.db --feed-date 2024-01-16 --as-of 2024-01-17`. The CLI reports cumulative counts for the database.
+
+### Recover a failed delivery
+
+- A file-level failure exits with code `1` and rolls back the delivery. Fix the input or source selection and retry the same date. Earlier committed deliveries stay available.
+- A delivery can succeed with rejected records. Inspect `rejection_report` for the source file and row before correcting them. A corrected row can be loaded on the same date if it had no accepted version. A correction to an already accepted key needs a newer delivery date under the current versioning rule.
+- If a backfill reports that its reporting date precedes a loaded feed, pass an `--as-of` date at least as recent as the latest loaded delivery. Use a fresh database to reproduce a historical snapshot from the original files.
 
 ## Input contracts
 
