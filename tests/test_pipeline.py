@@ -162,6 +162,22 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual(self.load(), original)
         self.assertEqual(self.load(profiles=[("global", pending)])["members"], 2)
 
+    def test_ambiguous_json_is_rejected_in_both_input_formats(self):
+        duplicate = '{"member_id":"42","member_id":"99","feed_date":"20240115","redemptions":[]}'
+        non_finite = '{"member_id":"42","feed_date":"20240115","redemptions":[{"miles_redeemed":NaN}]}'
+        valid = ('{"member_id":"42","feed_date":"20240115","redemptions":[{"txn_id":"R1",'
+                 '"txn_date":"20240110","partner":"Demo","miles_redeemed":100,"status":"PENDING"}]}')
+        stream = self.write("feed.jsonl", "\n".join((duplicate, non_finite, valid)))
+        summary = self.load(redemptions=[stream])
+        self.assertEqual((summary["redemptions"], summary["rejections"]), (1, 2))
+        self.assertEqual(self.query("SELECT record_number, reason FROM rejection_report ORDER BY record_number"), [
+            (1, "JSON object contains duplicate keys"), (2, "non-finite JSON number"),
+        ])
+        document = self.write("feed.json", f"[{valid},{duplicate}]")
+        with self.assertRaisesRegex(ValueError, "redemptions input feed.json: JSON object contains duplicate keys"):
+            self.load(redemptions=[document])
+        self.assertEqual(self.load(), summary)
+
 
 if __name__ == "__main__":
     unittest.main()

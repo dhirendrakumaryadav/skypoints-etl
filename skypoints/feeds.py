@@ -155,13 +155,29 @@ def normalize_profile(raw, source, feed_date, fields):
     return profile
 
 
+def unique_json_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise InvalidRecord("JSON object contains duplicate keys")
+        result[key] = value
+    return result
+
+
+def reject_json_constant(_value):
+    raise InvalidRecord("non-finite JSON number")
+
+
+REDEMPTION_JSON = json.JSONDecoder(object_pairs_hook=unique_json_object, parse_constant=reject_json_constant)
+
+
 def redemption_rows(stream, suffix):
     if suffix.lower() in (".jsonl", ".ndjson"):
         for line_number, line in enumerate(stream, 1):
             if line.strip():
                 yield line_number, line.rstrip("\r\n")
         return
-    document = json.load(stream)
+    document = REDEMPTION_JSON.decode(stream.read())
     envelopes = document if isinstance(document, list) else [document]
     for index, envelope in enumerate(envelopes, 1):
         yield index, json.dumps(envelope, ensure_ascii=False)
@@ -169,7 +185,9 @@ def redemption_rows(stream, suffix):
 
 def redemption_envelope(raw, feed_date):
     try:
-        envelope = json.loads(raw)
+        envelope = REDEMPTION_JSON.decode(raw)
+    except InvalidRecord:
+        raise
     except (ValueError, RecursionError):
         raise InvalidRecord("invalid JSON envelope") from None
     if not isinstance(envelope, dict) or not isinstance(envelope.get("redemptions"), list):
