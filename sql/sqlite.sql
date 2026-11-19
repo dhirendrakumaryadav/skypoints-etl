@@ -87,3 +87,9 @@ CREATE VIEW IF NOT EXISTS redemption_with_member AS
 SELECT r.*, m.member_name, m.country
 FROM redemption AS r
 LEFT JOIN stage_member AS m ON m.member_key = r.member_key;
+
+CREATE VIEW IF NOT EXISTS rejection_report AS
+SELECT f.file_id, f.source, f.feed_date, f.filename, r.record_number,
+       NULLIF(r.item_number, 0) AS item_number, r.reason
+FROM rejected_record AS r
+JOIN landing_file AS f USING (file_id);

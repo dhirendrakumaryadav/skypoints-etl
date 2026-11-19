@@ -18,7 +18,7 @@ Start with a fresh database name for the walkthrough. The first load publishes f
 python -m sqlite3 demo.db "SELECT country, member_key FROM stage_member ORDER BY member_key;"
 python -m sqlite3 demo.db "SELECT member_key FROM table_usa UNION ALL SELECT member_key FROM table_canada;"
 python -m sqlite3 demo.db "SELECT txn_id, status, country FROM redemption_with_member ORDER BY txn_id;"
-python -m sqlite3 demo.db "SELECT f.filename, r.record_number, r.item_number, r.reason FROM rejected_record AS r JOIN landing_file AS f USING (file_id);"
+python -m sqlite3 demo.db "SELECT filename, record_number, item_number, reason FROM rejection_report;"
 ```
 
 Rerun the second load to show that an identical file does not create a new version. To demonstrate an older delivery arriving late, start with a fresh database, run the second load first, then run the first load with `--as-of 2024-01-16`. The member should stay in Canada. To test a new reporting date without new files, run `python -m skypoints --db demo.db --feed-date 2024-01-16 --as-of 2024-01-17`. The CLI reports cumulative counts for the database.

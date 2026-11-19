@@ -126,6 +126,9 @@ class PipelineTest(unittest.TestCase):
         feed = self.write("redemptions.jsonl", "\n".join((json.dumps(envelope), "{", json.dumps(orphan))))
         summary = self.load(profiles=[("global", source)], redemptions=[feed])
         self.assertEqual(summary["rejections"], 2)
+        self.assertEqual(self.query("SELECT filename, feed_date, record_number, item_number "
+                                    "FROM rejection_report ORDER BY record_number"),
+                         [("redemptions.jsonl", "2024-01-15", 1, 2), ("redemptions.jsonl", "2024-01-15", 2, None)])
         self.assertEqual(self.query("SELECT txn_id, country FROM redemption_with_member ORDER BY txn_id"),
                          [("R1", "USA"), ("R2", None)])
         updated = {**envelope, "feed_date": "20240116", "redemptions": [{**item, "status": "COMPLETED"}]}
