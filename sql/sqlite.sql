@@ -93,3 +93,33 @@ SELECT f.file_id, f.source, f.feed_date, f.filename, r.record_number,
        NULLIF(r.item_number, 0) AS item_number, r.reason
 FROM rejected_record AS r
 JOIN landing_file AS f USING (file_id);
+
+-- A healthy publication returns zero rows.
+CREATE VIEW IF NOT EXISTS country_publication_issue AS
+WITH published AS (
+    SELECT 'USA' AS target_country, * FROM table_usa
+    UNION ALL SELECT 'IND', * FROM table_india
+    UNION ALL SELECT 'AUS', * FROM table_australia
+    UNION ALL SELECT 'CAN', * FROM table_canada
+    UNION ALL SELECT 'PHL', * FROM table_philippines
+)
+SELECT s.member_key, s.country, 'missing_from_target' AS issue
+FROM stage_member AS s
+WHERE NOT EXISTS (
+    SELECT 1 FROM published AS p
+    WHERE p.member_key = s.member_key AND p.target_country = s.country
+)
+UNION ALL
+SELECT p.member_key, p.target_country, 'unexpected_in_target'
+FROM published AS p
+LEFT JOIN stage_member AS s ON s.member_key = p.member_key
+WHERE s.country IS NOT p.target_country OR p.country IS NOT p.target_country
+UNION ALL
+SELECT member_key, NULL, 'published_more_than_once'
+FROM published GROUP BY member_key HAVING count(*) > 1
+UNION ALL
+SELECT p.member_key, p.target_country, 'outdated_snapshot'
+FROM published AS p
+JOIN stage_member AS s ON s.member_key = p.member_key AND s.country = p.target_country
+WHERE p.feed_date IS NOT s.feed_date OR p.as_of_date IS NOT s.as_of_date
+   OR p.age IS NOT s.age OR p.stale_member IS NOT s.stale_member;

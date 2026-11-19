@@ -107,6 +107,23 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual(self.query("SELECT country FROM stage_member"), [("USA",)])
         self.assertEqual(self.query("SELECT count(*) FROM profile_version"), [(1,)])
 
+    def test_country_audit_finds_missing_duplicate_and_outdated_rows(self):
+        source = self.global_feed("first.psv",
+                                  "|D|Alex|42|20190101||GLD||WA|USA||A",
+                                  "|D|Casey|43|20190101||GLD||WA|USA||A")
+        self.load(profiles=[("global", source)])
+        self.assertEqual(self.query("SELECT * FROM country_publication_issue"), [])
+        with closing(sqlite3.connect(self.database)) as db, db:
+            db.execute("DELETE FROM table_usa WHERE member_key = 'global:43'")
+            db.execute("INSERT INTO table_canada SELECT * FROM table_usa")
+            db.execute("UPDATE table_usa SET stale_member = 0")
+        self.assertCountEqual(self.query("SELECT * FROM country_publication_issue"), [
+            ("global:43", "USA", "missing_from_target"),
+            ("global:42", "CAN", "unexpected_in_target"),
+            ("global:42", None, "published_more_than_once"),
+            ("global:42", "USA", "outdated_snapshot"),
+        ])
+
     def test_missing_mandatory_fields_and_unknown_country_are_rejected(self):
         source = self.global_feed("invalid.psv",
                                   "|D||41|20190101||GLD||WA|USA||A",
